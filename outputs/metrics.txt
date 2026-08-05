@@ -1,0 +1,28 @@
+t1_onestep_pairwise_latent_dist: 10.8602
+t09_onestep_pairwise_latent_dist: 27.4428
+full_onestep_pairwise_latent_dist: 16.0815
+full_euler_pairwise_latent_dist: 81.3599
+real_data_pairwise_latent_dist: 110.9536
+chain_t1_then_t09_diversity: 25.5236
+full_2step_diversity: 29.4402
+t09_direct_pure_noise_diversity: 27.5021
+chain_vs_direct_mean_shift: 9.9822
+chain_t1_then_t09_diversity: 25.5236
+full_2step_diversity: 29.4402
+t09_direct_pure_noise_diversity: 27.5021
+t09_two_steps_diversity: 31.0558
+chain_vs_direct_mean_shift: 9.9822
+t09_two_steps_vs_direct_mean_shift: 9.2088
+eb_logit_std_nats: 10.28
+eb_effective_num_train_images: mean 2.8, median 2.4, max 5.9
+eb_top1_weight: mean 0.613
+eb_optimal_diversity: 82.87
+t09_model_diversity_same_inputs: 27.44
+dist_optimal_output_to_nearest_train: 33.44
+dist_model_output_to_nearest_train: 68.81
+ref_nn_dist_between_real_train_latents: 88.36
+model_nn_equals_optimal_top1: 0.00
+uncond_pure_noise_diversity: 9.49  dist_to_mean: 11.29
+uncond_real_t09_diversity: 18.73  dist_to_mean: 15.42
+uncond_rescaled_noise_diversity: 16.47  dist_to_mean: 15.24
+uncond_two_step_diversity: 16.71  dist_to_mean: 14.51

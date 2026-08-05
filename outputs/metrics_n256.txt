@@ -1,0 +1,20 @@
+t1 one-step, pure noise: 10.8 +/- 0.1
+t09 one-step, pure noise: 27.3 +/- 0.3
+full, 64-step Euler: 81.9 +/- 0.5
+real data: 111.6 +/- 0.9
+t09 on real-noised: 31.3 +/- 0.8
+t09 on real-noised dist-to-mean: 23.1 +/- 0.4
+t09 on pure noise dist-to-mean: 24.6 +/- 0.3
+chained t1->t09: 25.4 +/- 0.4
+full 2-step: 29.3 +/- 0.3
+t09 direct: 27.3 +/- 0.3
+t09 both steps: 30.5 +/- 0.6
+uncond pure: 9.5 +/- 0.1
+uncond pure dist-to-mean: 11.3 +/- 0.1
+uncond real-noised: 17.8 +/- 0.2
+uncond real-noised dist-to-mean: 14.9 +/- 0.1
+uncond spoof x0.906: 16.5 +/- 0.0
+uncond spoof x0.906 dist-to-mean: 15.3 +/- 0.0
+uncond 2-step: 16.8 +/- 0.1
+uncond 2-step dist-to-mean: 14.6 +/- 0.0
+real NN dist (yardstick): 88.5 +/- 1.4
