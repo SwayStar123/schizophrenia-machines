@@ -23,8 +23,7 @@ Flow matching convention: `x_t = (1-t)·x0 + t·noise`, model predicts `v = nois
 - A model trained only at t=1 sees zero information about x0. Its optimal one-step
   output is the dataset mean — a blurry, front-facing, unisex face.
 - A model trained only at t=0.9 learns to read faint structure out of 90% noise.
-  Fed *pure* noise (which it never saw in training), it hallucinates that structure
-  anyway — and produces diverse, detailed faces. Pareidolia, weaponized.
+  Fed *pure* noise (which it never saw in training), it sees patterns that don't exist anyway.
 - A full model does this at every step of sampling: each Euler step manufactures a
   slightly-off-manifold input for the next step, and the model's generalization
   fills the gap with things that were never there.
