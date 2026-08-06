@@ -1,0 +1,18 @@
+latent dim 8192, trace(cov) = 6214
+top eigenvalues: 243, 213, 133, 94, 79, 60, 52, 50, 46, 41
+directions with SNR > 1 (lam > 81): 4
+directions with SNR > 0.1 (lam > 8.1): 100
+variance-weighted recovered fraction of the signal: 0.153
+|x0 - mu| per image: 80.1
+|model_avg - mu|: 15.6, |linear_expect - mu|: 20.2
+cosine(model_avg - mu, linear_expect - mu) per image: 0.86, 0.88, 0.85, 0.84, 0.93, 0.91, 0.82, 0.74  (mean 0.86)
+per-draw hallucination magnitude |single - avg|: 16.8
+
+--- pure noise ---
+Wiener on pure noise: diversity 35.8 +/- 0.6, dist-to-mean 29.9, nearest-train 69.4
+model on pure noise (same 256): diversity 27.3 +/- 0.3, nearest-train 69.0
+
+--- full 64-step sampling ---
+Wiener sampler: diversity 108.4 +/- 0.7, nearest-train 93.7 +/- 0.3
+trained full model: nearest-train 83.1 +/- 0.3
+(real NN yardstick: 88.5 +/- 1.4; real diversity: 111.6 +/- 0.9)

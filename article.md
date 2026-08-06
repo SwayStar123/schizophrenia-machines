@@ -6,7 +6,9 @@ coarse-to-fine, like autoregression over frequency bands. That's the
 signal-processing view.
 
 Here's a more anthropomorphic one: **diffusion models work because they see patterns that aren't there**.
-There is a large train-test mismatch when sampling from them, but because they're only ever trained to predict flows toward the real data manifold, their generalization still gives us useful outputs.
+
+
+There is a large train-test mismatch when sampling from them, but because they were only ever trained on real noisy data as inputs, and flow outputs towards the real data manifold, they can still generalize to produce useful outputs.
 
 To demonstrate, I built my own madhouse of broken models.
 
@@ -19,7 +21,7 @@ VAE latent space, with a 22M-parameter DiT:
 x_t = (1 − t)·x0 + t·x1        x1 ~ N(0, I)
 ```
 
-t = 1 is pure noise. The model predicts the velocity `v = x1 − x0`
+t = 1 is pure noise. The model predicts the velocity `v = x1 − x0`.
 
 Normal sampling uses Euler integration with small steps to reach the clean image. However, at any point during sampling, the velocity prediction implies a belief about the final image,
 
@@ -29,22 +31,21 @@ x̂0 = x_t − t·v(x_t, t)
 
 which we can decode and look at.
 
-## The model that gave up trying
+## The model that gave up
 
-Train a model **only at t = 1**. Its input is pure noise, drawn independently of
-the target, so the loss-minimizing prediction is the unconditional mean:
+Train a model **only at t = 1**. Its input is pure noise, containing no information about the target. The optimal prediction it can make is the unconditional mean:
 
 ```
 v*(x1) = x1 − E[x0]    ⇒    x̂0 = E[x0]
 ```
 
-The dataset mean, whatever the input. The optimal t=1 model *has given up*: shown noise,
-it refuses to see anything in particular and reports its prior. And that's what
-training finds. Sixteen different noises, one step each:
+The dataset mean, whatever the input. The optimal t=1 model *has given up*: shown noise, it is unable to commit to any specific face. If it incorrectly predicts a woman when the target was a man, the optimizer penalizes it. The only safe prediction is to make no assumption.
+
+Sixteen different noises, one step each:
 
 ![t=1 model, one step from 16 different noises](outputs/fig1_t1_onestep_grid.png)
 
-One face, sixteen times: a front-facing floating head. It's the decoded dataset-mean latent:
+Nearly the exact same output every time: a front-facing floating head. It has converged to the mean of the dataset:
 
 ![decoded dataset mean latent](outputs/fig1b_dataset_mean.png)
 
@@ -59,6 +60,8 @@ through:
 ![t=0.9 model reconstructing real noised images](outputs/fig3_t09_real_recon.png)
 
 (rows: original / the noised input, decoded / one-step reconstruction)
+
+The optimal prediction now is to recover as much of the signal as possible from the noise, and fill in the rest with the average given the recovered signal.
 
 Now the fun part: we can feed it **pure noise**. There is no face in there. A model that
 knew that would output the mean face. Instead:
@@ -78,9 +81,11 @@ The t=1 model collapses to a point.
 
 The t=0.9 model, facing a large train-test mismatch, is 2.5× more diverse.
 
-That diversity can't come from the input; pure noise specifies nothing. It comes from the model's learned behavior. Its response to nothing is about 87% as spread out as its response
+That diversity can't come from the input; pure noise specifies nothing about the target. It comes from the model's learned behavior. Its response to nothing is about 87% as spread out as its response
 to something (27.3 vs 31.3 on real noised images): deleting every trace of genuine
 signal barely dents its output distribution.[^2]
+
+The model has an ingrained belief that 10% of whatever it sees is real signal, and its job is to figure out what part of the input is the signal. When presented with 0% signal, it will find the random patterns that most resemble real signal and adopt those instead.
 
 ## What would the perfect student see?
 
@@ -101,13 +106,13 @@ Now feed it pure noise. The assumption behind the formula is false: there is no 
 (rows: optimal prediction / the training image it retrieved / trained model's
 prediction / nearest training image to that. Same noise per column)
 
-It retrieves training photographs, nearly verbatim. In 8192 dimensions, some training image always happens to correlate with a given draw of static far better than the rest, and the softmax slams onto it: 61% of the posterior mass goes to a single training image, and only ~2.8 images contribute at all. The perfect memorizer looks at static and sees a specific photograph it has memorized.[^3]
+It retrieves training photographs, nearly verbatim. Some training image always happens to correlate with a given draw of static better than the rest, and the softmax slams onto it: 61% of the posterior mass goes to a single training image, and only ~2.8 images contribute at all. The "perfect student" looks at static and sees a specific photograph it has memorized.[^3]
 
-The trained network does nothing of the sort. Its outputs sit twice as far from the training set, and its nearest training image matches the optimal denoiser's retrieval in 0 of 16 cases. It isn't approximating the empirical posterior and falling short, it computes a different function entirely. It learned the statistics of faces and makes up new ones, where the exact solution to its own training objective would just return old ones. This is Kadkhodaie et al.'s [memorization-vs-generalization result](https://arxiv.org/abs/2310.02557) at a single noise level.[^4]
+Thankfully diffusion models generally don't do that. The training dynamics of diffusion models heavily disincentivize memorization. We end up seeing Kadkhodaie et al.'s [memorization-vs-generalization result](https://arxiv.org/abs/2310.02557) at a single noise level.[^4]
 
-Two ways to see a face in noise: remember one, or make one up. The model only learns to produce flows that end at the real data manifold, so keeping the noise is not an option.
+The optimal trained denoiser ends up actually learning the patterns of the data distribution, and only tries to recover the amount of signal it is told it will receive. Since actual training doesn't actually reward flowing towards *any* real target, but rather the *specific* target that was chosen randomly from the dataset. 
 
-## Sampling plays the same trick at every step
+## Sampling faces the same mismatch at every step
 
 During training, `x_t` is always built from a real image. During sampling, the state at t = 0.9 is built by *the model itself*: one Euler step from pure noise, and the t=1 velocity points at the mean face, because it can do nothing else.[^5] So the state we hand to the next step is
 
@@ -116,13 +121,13 @@ x_0.9 = 0.9·x1 + 0.1·E[x0]
 ```
 
 noise plus a faint mean face. If the model followed the only genuine signal in that state, every sample would sharpen into the same averaged floating head.
-Instead, unique details emerge. At t=0.9, there is still plenty of noise, and thus plenty of chances to see things which arent there. Remember, the mean face is not part of the real data manifold, so the model simply does not see it as a valid choice. Some of this noise must be ground truth, and some of this mean face must be noise!
+Instead, unique details emerge. At t=0.9, there is still plenty of noise, and thus plenty of chances to see things which aren't there. Remember, the mean face is not part of the real data manifold, so the model simply does not see it as a valid choice. Some of this noise must be ground truth, and some of this mean face must be noise!
 
 ![implied x0 along the sampling trajectory](outputs/fig6_x0_trajectory.png)
 
 (two seeds. Columns alternate between what the model receives and what it believes is in there: prediction at t = 1.0, then input state / prediction pairs at t = 0.9, 0.8, 0.6, 0.4, 0.2, then the final output)
 
-At t = 1 the prediction is always the mean face. Then it drifts toward some specific person that was never in the input. Interpreting some noises as signal, and some mean face as noise
+At t = 1 the prediction is always the mean face. Then it drifts toward some specific person that was never in the input. Interpreting some noises as signal, and some mean face as noise.
 
 Compare with a t = 0.9 state built from a real image. Noise a real photo to t = 0.9, then run the full model's 58-step sampling from there. Pose, palette, and composition survive.
 
@@ -189,55 +194,21 @@ None of the pieces here are new; the assembly might be. The pareidolia analogy h
   (t ∈ {1.0, 0.9} 50/50, conditioning frozen to 0).
 - **Code**: [here](https://github.com/SwayStar123/schizophrenia-machines).
   `train.py --t-mode {t1,t09,full,uncond}`, then `experiments.py`,
-  `experiment_chain.py`, `empirical_bayes.py`, `experiment_uncond.py`,
+  `fig6_remake.py`, `empirical_bayes.py`, `experiment_uncond.py`,
   `experiment_iterate.py`, `variance_check.py`.
 
-[^1]: Throughout: diversity = mean pairwise L2 between outputs in latent space,
-over 256 inputs; ± is a 95% CI from 16 disjoint 16-sample groups. Figures show the
-first few of the same seeds.
+[^1]: Throughout: diversity = mean pairwise L2 between outputs in latent space, over 256 inputs; ± is a 95% CI from 16 disjoint 16-sample groups. Figures show the first few of the same seeds.
 
-[^2]: The gap is real (31.3 ± 0.8 vs 27.3 ± 0.3) — the genuine signal does *some*
-work — and the pure-noise outputs actually sit slightly farther from the mean face
-(24.6 vs 23.1). Also, pure noise is ~10% "hotter" than the t=0.9 marginal, so
-these inputs are detectably out-of-distribution; the model confabulates on them
-anyway. Cf. the unconditioned model later, which learns to use exactly that gap.
+[^2]: The gap is real (31.3 ± 0.8 vs 27.3 ± 0.3) — the genuine signal does *some* work — and the pure-noise outputs actually sit slightly farther from the mean face (24.6 vs 23.1). Also, pure noise is ~10% "hotter" than the t=0.9 marginal, so these inputs are detectably out-of-distribution; the model confabulates on them anyway. Cf. the unconditioned model in footnote 7, which learns to use exactly that gap.
 
-[^3]: Distances for scale: the optimal denoiser's outputs sit at 33 from their
-nearest training image, the trained model's at 69, and a real latent's average
-distance to its *nearest neighbor* in the training set is 88.5 ± 1.4. (Nearest-
-neighbor distance — a different yardstick from the pairwise diversity numbers.)
+[^3]: Distances for scale: the optimal denoiser's outputs sit at 33 from their nearest training image, the trained model's at 69, and a real latent's average distance to its *nearest neighbor* in the training set is 88.5 ± 1.4. (Nearest- neighbor distance — a different yardstick from the pairwise diversity numbers.)
 
-[^4]: "Optimal" here means optimal for the *empirical* training set. The
-*population* optimum — infinite data — would also invent diverse novel faces from
-pure noise. Invention isn't an optimization failure; it's what correct
-generalization looks like, and the network's inductive biases luckily deliver it.
-Relative to the empirical optimum the model hallucinates worse than optimally —
-which is to say, better than the finite data alone could justify.
+[^4]: "Optimal" here means optimal for the *empirical* training set. The *population* optimum — infinite data — would also invent diverse novel faces from pure noise. Invention isn't an optimization failure; it's what correct generalization looks like, and the network's inductive biases luckily deliver it. Relative to the empirical optimum the model hallucinates worse than optimally — which is to say, better than the finite data alone could justify.
 
-[^5]: Not an artifact of the crippled t=1-only model: the full model also produces
-sixteen identical mean faces in one step from t = 1
-([fig4](outputs/fig4_full_onestep_t1.png)), yet its 64-step samples
-([fig5](outputs/fig5_full_euler_grid.png)) reach diversity 81.9 vs the real data's
-111.6 — under-dispersed, as deterministic ODE samplers tend to be, but in the
-right league.
+[^5]: Not an artifact of the crippled t=1-only model: the full model also produces sixteen identical mean faces in one step from t = 1 ([fig4](outputs/fig4_full_onestep_t1.png)), yet its 64-step samples ([fig5](outputs/fig5_full_euler_grid.png)) reach diversity 81.9 vs the real data's 111.6 — under-dispersed, as deterministic ODE samplers tend to be, but in the right league.
 
-[^6]: In the idealized limit — exact population velocity field, infinitesimal
-steps — the probability-flow ODE is a clean measure transport: no exposure bias,
-no "hallucination" needed, diversity riding in on the initial noise. But that
-ideal isn't available from finite data; its nearest well-defined version is the
-empirical-Bayes ODE, which is a memorizer. Every novel face comes from the network
-filling in the transport map where the training objective never pinned it down.
+[^6]: In the idealized limit — exact population velocity field, infinitesimal steps — the probability-flow ODE is a clean measure transport: no exposure bias, no "hallucination" needed, diversity riding in on the initial noise. But that ideal isn't available from finite data; its nearest well-defined version is the empirical-Bayes ODE, which is a memorizer. Every novel face comes from the network filling in the transport map where the training objective never pinned it down.
 
-[^7]: Unless the model gets to infer the noise level from the input itself. Train
-a variant on both t = 1.0 and t = 0.9 with the timestep input frozen and it learns
-to tell the two apart from the input norm alone (pure noise has std 1.0, the t=0.9
-marginal ≈ 0.906 — in 8192 dimensions that's a clean separation, which is also why
-[noise conditioning is largely unnecessary](https://arxiv.org/abs/2502.13129)).
-On pure noise this model outputs the mean face: it detects "nothing there" without
-ever being told. But rescale pure noise by 0.906 so its norm matches the t=0.9
-marginal and the hallucinations come right back, at over 90% of its response to
-genuinely noised real faces ([fig11](outputs/fig11_uncond.png)). Its reality check
-is a loudness check.
+[^7]: Unless the model gets to infer the noise level from the input itself. Train a variant on both t = 1.0 and t = 0.9 with the timestep input frozen and it learns to tell the two apart from the input norm alone (pure noise has std 1.0, the t=0.9 marginal ≈ 0.906 — in 8192 dimensions that's a clean separation, which is also why [noise conditioning is largely unnecessary](https://arxiv.org/abs/2502.13129)). On pure noise this model outputs the mean face: it detects "nothing there" without ever being told. But rescale pure noise by 0.906 so its norm matches the t=0.9 marginal and the hallucinations come right back, at over 90% of its response to genuinely noised real faces ([fig11](outputs/fig11_uncond.png)). Its reality check is a loudness check.
 
-[^8]: 2,500-step tiny models, not SOTA anything. That's rather the point: none of
-these effects require scale, they fall out of the objective.
+[^8]: 2,500-step tiny models, not SOTA anything. That's rather the point: none of these effects require scale, they fall out of the objective.
