@@ -19,8 +19,8 @@ Outputs:
     noised input (one draw, same as fig3)
     trained model, that single draw
     linear-optimal, that single draw
-    trained model, averaged over 256 draws
-    linear-optimal in expectation over draws  (= "the average given the 10% signal")
+  (the 256-draw model average and linear expectation are computed for the stats
+   but no longer shown in the figure)
   avg_signal_stats.txt  spectrum + agreement numbers
 """
 import common
@@ -99,7 +99,7 @@ with torch.no_grad():
 model_avg = acc
 
 # ---------- figure ----------
-rows = torch.cat([x0, xt, model_single, to_img(lin_single), model_avg, to_img(lin_expect)])
+rows = torch.cat([x0, xt, model_single, to_img(lin_single)])
 imgs = torch.cat([decode(rows[i:i + 8]) for i in range(0, len(rows), 8)])
 save_image(make_grid(imgs, nrow=8, padding=2), common.OUT_DIR / "fig13_avg_given_signal.png")
 
@@ -129,7 +129,7 @@ lines.append(f"per-draw hallucination magnitude |single - avg|: {d_hall.mean().i
 # fig13b: same 16 noises as fig2. Column = one noise; row pairs = trained model / Wiener.
 model_pure = one_step(noise16)
 wien_pure16 = to_img(mu + ((V.T @ (noise16.flatten(1) - A * mu).T) * gain_x[:, None]).T @ V.T)
-rows_b = torch.cat([model_pure[:8], wien_pure16[:8], model_pure[8:], wien_pure16[8:]])
+rows_b = torch.cat([model_pure[:8], wien_pure16[:8]])
 imgs_b = torch.cat([decode(rows_b[i:i + 8]) for i in range(0, len(rows_b), 8)])
 save_image(make_grid(imgs_b, nrow=8, padding=2), common.OUT_DIR / "fig13b_wiener_pure_noise.png")
 
@@ -208,8 +208,7 @@ wien_samp8 = euler_wiener(noise16[:8])
 full_samp8 = euler_model(m_full, noise16[:8].clone())
 wv, wi = nearest_train(wien_samp8)
 fv, fi = nearest_train(full_samp8)
-rows_c = torch.cat([to_img(wien_samp8), latents_n[wi.cpu()].to(device),
-                    full_samp8, latents_n[fi.cpu()].to(device)])
+rows_c = torch.cat([to_img(wien_samp8), full_samp8])
 imgs_c = torch.cat([decode(rows_c[i:i + 8]) for i in range(0, len(rows_c), 8)])
 save_image(make_grid(imgs_c, nrow=8, padding=2), common.OUT_DIR / "fig13c_wiener_full_sampling.png")
 
